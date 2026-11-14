@@ -43,6 +43,8 @@ await show(`<meta charset=utf-8><style>${fontCss}
 .link{position:absolute;top:960px;left:90px;right:90px;padding:30px 0;border-radius:999px;background:#fff;color:#0E0E10;text-align:center;font-family:'Maru';font-weight:800;font-size:50px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 .row{position:absolute;top:1180px;width:100%;display:flex;justify-content:center;gap:70px}
 .b{display:flex;flex-direction:column;align-items:center;gap:14px;font-family:'Maru';font-weight:800;font-size:40px;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.45)}
+.ask{position:absolute;top:1450px;left:110px;right:110px;padding:28px 0;border-radius:36px;background:#F5E663;color:#0E0E10;text-align:center;font-family:'Maru','Noto Color Emoji';font-weight:800;font-size:52px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.ask:after{content:'';position:absolute;top:-28px;left:50%;margin-left:-22px;border:22px solid transparent;border-bottom:28px solid #F5E663;border-top:0}
 .i{width:150px;height:150px;border-radius:50%;background:rgba(14,14,16,.55);border:5px solid #fff;display:flex;align-items:center;justify-content:center}
 </style>
 <div class="logo">Scrollish</div>
@@ -52,19 +54,22 @@ await show(`<meta charset=utf-8><style>${fontCss}
  <div class="b"><div class="i"><svg width="80" height="80" viewBox="0 0 24 24" fill="#FF3D7F" stroke="#FF3D7F" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></div>いいね</div>
  <div class="b"><div class="i"><svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#2EE6D6" stroke-width="2.4" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></div>フォロー</div>
  <div class="b"><div class="i"><svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#F5E663" stroke-width="2.4" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></div>コメント</div>
-</div>`);
+</div>
+<div class="ask">「牛乳」ってコメントしてね🥛</div>`);
 await page.evaluate(() => document.fonts.ready);
 await page.screenshot({ path: `${OUT}/cta.png`, omitBackground: true });
 
 // BGM：OfflineAudioContext で30秒のローファイ風ループを合成
 // 0〜10秒：パッドだけ（もやっと）／10秒〜：ビートが入る（転）／18秒〜：メロディが入って明るく（結）
-const wav = await page.evaluate(async () => {
+// music=false なら効果音だけ（TikTok の楽曲を重ねる用）
+const renderAudio = (music) => page.evaluate(async (music) => {
   const SR = 44100, DUR = 30.5, BPM = 90, beat = 60 / BPM;
   const ctx = new OfflineAudioContext(2, SR * DUR, SR);
   const master = ctx.createGain(); master.gain.value = 0.55; master.connect(ctx.destination);
   const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
   const chords = [[53, 57, 60, 64], [52, 55, 59, 62], [50, 53, 57, 60], [48, 52, 55, 59]]; // Fmaj7 Em7 Dm7 Cmaj7
   const bar = beat * 4;
+  if (music) {
   const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.setValueAtTime(700, 0); lp.frequency.linearRampToValueAtTime(700, 10); lp.frequency.linearRampToValueAtTime(1800, 11); lp.frequency.setValueAtTime(1800, 17.5); lp.frequency.linearRampToValueAtTime(3200, 18.5); lp.connect(master);
   for (let t = 0, i = 0; t < DUR; t += bar, i++) {
     const ch = chords[i % 4];
@@ -90,6 +95,7 @@ const wav = await page.evaluate(async () => {
   // メロディ（18秒〜、ペンタトニックのベル）
   const mel = [72, 74, 76, 79, 76, 74, 72, 69, 72, 76, 79, 81, 79, 76, 74, 76];
   mel.forEach((m, i) => { const t = 18 + i * beat / 2 * 1.5; if (t > 29) return; const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = mtof(m); const g = ctx.createGain(); g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.6); o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.6); });
+  }
   // 効果音：18秒「ドン」、26秒「キラーン」
   { const t = 18; const o = ctx.createOscillator(); o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.4); const g = ctx.createGain(); g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.45); o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.5); }
   [1320, 1760, 2640].forEach((f, i) => { const t = 26 + i * 0.07; const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = f; const g = ctx.createGain(); g.gain.setValueAtTime(0.2, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.3); });
@@ -105,7 +111,8 @@ const wav = await page.evaluate(async () => {
   for (let i = 0; i < n; i++) { v.setInt16(44 + i * 4, Math.max(-1, Math.min(1, L[i])) * 32767, true); v.setInt16(46 + i * 4, Math.max(-1, Math.min(1, R[i])) * 32767, true); }
   let s = ""; const u8 = new Uint8Array(ab); for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000));
   return btoa(s);
-});
-writeFileSync(`${OUT}/bgm.wav`, Buffer.from(wav, "base64"));
+}, music);
+writeFileSync(`${OUT}/bgm.wav`, Buffer.from(await renderAudio(true), "base64"));
+writeFileSync(`${OUT}/sfx.wav`, Buffer.from(await renderAudio(false), "base64"));
 await browser.close();
 console.log("overlays done");

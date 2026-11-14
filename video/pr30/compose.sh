@@ -3,6 +3,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 IMG=../../assets/images
+AUDIO=${1:-bgm}   # bgm（合成BGM入り）または sfx（効果音だけ。TikTokの楽曲を重ねる用）
+OUTFILE=build/scrollish_pr30.mp4; [ "$AUDIO" = sfx ] && OUTFILE=build/scrollish_pr30_sfx_only.mp4
 OV=build/ov
 read START END < <(node -e 'const m=require("./build/rec_marks.json");console.log(m.start,m.end)')
 APP_LEN=8          # 「結」の画面録画パートの長さ（18〜26秒）
@@ -24,7 +26,7 @@ ffmpeg -y -v error \
   -loop 1 -t 4   -i $IMG/pr_cut06_cta_bg.webp \
   -loop 1 -i $OV/s1.png -loop 1 -i $OV/s2.png -loop 1 -i $OV/s3.png -loop 1 -i $OV/s4.png \
   -loop 1 -i $OV/s5.png -loop 1 -i $OV/s6.png -loop 1 -i $OV/cta.png \
-  -i $OV/bgm.wav \
+  -i $OV/${AUDIO}.wav \
   -filter_complex "
   [0]$(kb 3 0.10)[a];
   [1]$(kb 4 0.08)[b0];
@@ -52,5 +54,5 @@ ffmpeg -y -v error \
   [v3][s4]overlay=enable='between(t,11,14.5)':shortest=1[v4];
   [v4][s5]overlay=enable='between(t,14.5,18)':shortest=1[v5];
   [v5][s6]overlay=enable='between(t,18,26)':shortest=1,format=yuv420p[v]
-  " -map "[v]" -map 15:a -t 30 -r 30 -c:v libx264 -preset medium -crf 18 -c:a aac -b:a 192k -movflags +faststart build/scrollish_pr30.mp4
-ffprobe -v error -show_entries format=duration -of csv=p=0 build/scrollish_pr30.mp4
+  " -map "[v]" -map 15:a -t 30 -r 30 -c:v libx264 -preset medium -crf 18 -c:a aac -b:a 192k -movflags +faststart "$OUTFILE"
+ffprobe -v error -show_entries format=duration -of csv=p=0 "$OUTFILE"
