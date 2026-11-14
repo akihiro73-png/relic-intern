@@ -32,3 +32,32 @@ node overlays.mjs  # 字幕PNG・CTA PNG・BGM(WAV) を生成 → build/ov/
 - 字幕の文言・位置は `overlays.mjs` の `SUBS`、表示タイミングは `compose.sh` の `fade=...:st=` と `enable='between(...)'`。
 - 画面録画で見せる動画の順番は `record.mjs` の `window.__ORDER`（クリップID）。
 - 録画用ビルドはプロトタイプ本体を変更せず、フォントのローカル化と並び順の固定だけを行う。
+
+## 叫びバージョン（`compose_scream.sh`）
+
+冒頭だけ差し替えた別バージョン。完成品：`scrollish_pr30_scream.mp4`／`scrollish_pr30_scream_sfx_only.mp4`
+
+| 秒 | 映像 | 字幕・演出 |
+| --- | --- | --- |
+| 0–1.2 | カット①（ベッドでスクロール）＋時計の早回し 09:00→23:59 | TikTok見てただけなのに… |
+| 1.2–3.5 | 叫ぶ女性（`pr_cut00_scream` があれば使用。なければカット③で代用）にパンチズーム＋揺れ＋ピンクのフラッシュ | え、1日終わってる！？ |
+| 3.5–7 | カット② | TOEIC始めたのに、参考書は開いてない |
+| 7–10 | カット①の手元アップ | 勉強しなきゃと思いながら、またスクロール |
+| 10–30 | 通常版と同じ | 通常版と同じ |
+
+```bash
+./compose_scream.sh       # 合成BGM入り
+./compose_scream.sh sfx   # 効果音だけ
+```
+
+### 叫ぶ女性の画像（ChatGPT 用プロンプト）
+
+`assets/images/pr_cut00_scream.png` として保存して `./compose_scream.sh` を再実行すると差し替わる。
+
+```
+Vertical 9:16 photo, same young Japanese woman as the other cuts (messy bun with bangs, oversized gray hoodie),
+sitting up in bed at night in a cozy dorm room lit by a warm desk lamp, holding a smartphone in one hand,
+the other hand on her cheek, eyes wide and mouth wide open in a shocked scream, realizing the whole day has passed.
+Dark window with city lights behind her. Natural candid photo style, shallow depth of field, slight motion blur
+on the hair. Face in the upper-center of the frame. No text, no logos, no watermark.
+```

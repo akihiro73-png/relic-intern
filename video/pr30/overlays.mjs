@@ -36,6 +36,29 @@ for (const [id, top, html] of SUBS) {
   await page.screenshot({ path: `${OUT}/${id}.png`, omitBackground: true });
 }
 
+// 叫びバージョン用：時計の早回し（0〜1.2秒、36コマ）・叫びのフック・冒頭の字幕
+const dela = `<link rel="stylesheet" href="${nm("@fontsource/dela-gothic-one/400.css")}">`;
+for (let i = 0; i < 36; i++) {
+  const p = 1 - Math.pow(1 - i / 35, 2);              // だんだん遅くなる
+  const mins = Math.round(9 * 60 + p * (23 * 60 + 59 - 9 * 60));
+  const hh = String(Math.floor(mins / 60)).padStart(2, "0"), mm = String(mins % 60).padStart(2, "0");
+  const night = mins >= 18 * 60;
+  await show(`<meta charset=utf-8><style>${fontCss}
+  .clk{position:absolute;top:200px;left:50%;transform:translateX(-50%);padding:20px 56px;border-radius:40px;background:rgba(14,14,16,.6);text-align:center;color:#fff}
+  .lab{font-family:'Maru','Noto Color Emoji';font-weight:800;font-size:44px}
+  .t{font-family:'Mont';font-weight:900;font-size:170px;line-height:1;color:${night ? "#FF3D7F" : "#fff"}}</style>
+  <div class="clk"><div class="lab">${night ? "🌙" : "☀️"} 今日</div><div class="t">${hh}:${mm}</div></div>`);
+  await page.screenshot({ path: `${OUT}/clock_${String(i).padStart(2, "0")}.png`, omitBackground: true });
+}
+await show(`<meta charset=utf-8>${dela}<style>${fontCss}
+.h{position:absolute;top:1060px;left:0;right:0;text-align:center;font-family:'Dela Gothic One';color:#F5E663;transform:rotate(-5deg);
+  paint-order:stroke fill;-webkit-text-stroke:18px #000;text-shadow:10px 10px 0 #FF3D7F}
+.h .a{font-size:150px;color:#fff}.h .b{font-size:118px;line-height:1.25}</style>
+<div class="h"><div class="a">え、</div><div class="b">1日<br>終わってる！？</div></div>`);
+await page.screenshot({ path: `${OUT}/hook_scream.png`, omitBackground: true });
+await show(`<meta charset=utf-8><style>${fontCss}</style><div class="sub" style="top:1180px"><em>TikTok</em>見てただけなのに…</div>`);
+await page.screenshot({ path: `${OUT}/s0_scream.png`, omitBackground: true });
+
 // CTA（背景は pr_cut06_cta_bg を ffmpeg 側で敷くので、ここは文字とボタンだけ）
 await show(`<meta charset=utf-8><style>${fontCss}
 .logo{position:absolute;top:560px;width:100%;text-align:center;font-family:'Dela';font-size:150px;color:#fff;text-shadow:6px 6px 0 #FF3D7F,12px 12px 0 #2EE6D6}
@@ -62,7 +85,8 @@ await page.screenshot({ path: `${OUT}/cta.png`, omitBackground: true });
 // BGM：OfflineAudioContext で30秒のローファイ風ループを合成
 // 0〜10秒：パッドだけ（もやっと）／10秒〜：ビートが入る（転）／18秒〜：メロディが入って明るく（結）
 // music=false なら効果音だけ（TikTok の楽曲を重ねる用）
-const renderAudio = (music) => page.evaluate(async (music) => {
+// scream=true なら冒頭に時計の早回し音（0〜1.2秒）と叫びの「ドーン」（1.2秒）を足す（叫びバージョン用）
+const renderAudio = (music, scream = false) => page.evaluate(async ([music, scream]) => {
   const SR = 44100, DUR = 30.5, BPM = 90, beat = 60 / BPM;
   const ctx = new OfflineAudioContext(2, SR * DUR, SR);
   const master = ctx.createGain(); master.gain.value = 0.55; master.connect(ctx.destination);
@@ -96,6 +120,13 @@ const renderAudio = (music) => page.evaluate(async (music) => {
   const mel = [72, 74, 76, 79, 76, 74, 72, 69, 72, 76, 79, 81, 79, 76, 74, 76];
   mel.forEach((m, i) => { const t = 18 + i * beat / 2 * 1.5; if (t > 29) return; const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = mtof(m); const g = ctx.createGain(); g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.6); o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.6); });
   }
+  if (scream) {
+    for (let k = 0; k < 18; k++) { const t = k * 0.068; const o = ctx.createOscillator(); o.type = "square"; o.frequency.value = 2200 + k * 40; const g = ctx.createGain(); g.gain.setValueAtTime(0.06, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.03); o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.04); }
+    const t = 1.2;
+    { const o = ctx.createOscillator(); o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(35, t + 0.7); const g = ctx.createGain(); g.gain.setValueAtTime(1.0, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.8); o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.85); }
+    { const nb = ctx.createBuffer(1, SR, SR); const d = nb.getChannelData(0); for (let i = 0; i < SR; i++) d[i] = Math.random() * 2 - 1; const s = ctx.createBufferSource(); s.buffer = nb; const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 3000; const g = ctx.createGain(); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5); s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t + 0.55); }
+    [0, 0.22].forEach((dt) => { const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.setValueAtTime(880, t + dt); o.frequency.linearRampToValueAtTime(1320, t + dt + 0.18); const g = ctx.createGain(); g.gain.setValueAtTime(0.12, t + dt); g.gain.exponentialRampToValueAtTime(0.001, t + dt + 0.2); o.connect(g); g.connect(master); o.start(t + dt); o.stop(t + dt + 0.21); });
+  }
   // 効果音：18秒「ドン」、26秒「キラーン」
   { const t = 18; const o = ctx.createOscillator(); o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.4); const g = ctx.createGain(); g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.45); o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.5); }
   [1320, 1760, 2640].forEach((f, i) => { const t = 26 + i * 0.07; const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = f; const g = ctx.createGain(); g.gain.setValueAtTime(0.2, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.3); });
@@ -111,8 +142,10 @@ const renderAudio = (music) => page.evaluate(async (music) => {
   for (let i = 0; i < n; i++) { v.setInt16(44 + i * 4, Math.max(-1, Math.min(1, L[i])) * 32767, true); v.setInt16(46 + i * 4, Math.max(-1, Math.min(1, R[i])) * 32767, true); }
   let s = ""; const u8 = new Uint8Array(ab); for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000));
   return btoa(s);
-}, music);
+}, [music, scream]);
 writeFileSync(`${OUT}/bgm.wav`, Buffer.from(await renderAudio(true), "base64"));
 writeFileSync(`${OUT}/sfx.wav`, Buffer.from(await renderAudio(false), "base64"));
+writeFileSync(`${OUT}/bgm_scream.wav`, Buffer.from(await renderAudio(true, true), "base64"));
+writeFileSync(`${OUT}/sfx_scream.wav`, Buffer.from(await renderAudio(false, true), "base64"));
 await browser.close();
 console.log("overlays done");
