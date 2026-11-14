@@ -4,7 +4,8 @@
 
 作業を始める前に必ず読むこと：
 - `docs/handoff.md` … 経緯・決定事項・アプリ要件・残タスク（claude.ai チャットからの引き継ぎメモ）
-- `prototype/scrollish.jsx` … claude.ai アーティファクト用の1ファイルReactプロトタイプ（Vite + TS 版の元）
+- `src/App.jsx` … 公開中のアプリ本体（リポジトリ直下が Vite アプリ。Vercel は設定変更なしでデプロイできる構成を保つこと）
+- `prototype/scrollish.jsx` … claude.ai アーティファクト用の元プロトタイプ
 - `assets/images/` … 画像素材（見本・PR動画用カット）。内容は `assets/images/README.md`
 
 ルール：
